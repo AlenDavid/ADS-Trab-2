@@ -18,8 +18,8 @@ sd(df$t_between)
 hist(df$t_service)
 hist(df$t_between)
 
-boxplot(t_service, main = "Boxplot")
-boxplot(t_between, main = "Boxplot")
+boxplot(df$t_service, main = "Boxplot")
+boxplot(df$t_between, main = "Boxplot")
 
 qqnorm(t_service, main = "Normal Q-Q plot")
 qqnorm(t_between, main = "Normal Q-Q plot")
@@ -36,7 +36,7 @@ Tmax = med+(3*mad)
 # find outlier
 t_between[which(t_between < Tmin | t_between > Tmax)]
 
-t_cor <- cor(t_service, t_between)
+t_cor <- cor(df$t_service, df$t_between)
 
 # model
 model <- lm(t_service ~ t_between, df)

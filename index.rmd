@@ -1,9 +1,61 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
 ```{r on_init, include=FALSE}
-ts <- read.delim('datasets/ts.txt')
-tc <- read.delim('datasets/tc.txt')
+library(gridExtra)
+
+t_service <- read.csv('datasets/ts.txt')
+t_between <- read.csv('datasets/tc.txt')
+
+df <- data.frame(t_service, t_between)
+```
+
+# Projeto de Simulação, Grupo 8
+
+Alunos: David Alen e Samuel Soares
+
+## Introdução
+
+Um exemplo dos dados disponibilizados pela empresa. A variável t_between presenta o tempo que levou até este ticket chegar ao sistema e t_service representa o tempo que o profissional de suporte ficou dedicado trabalhando no mesmo.
+
+```{r}
+head(df)
+```
+
+### Outliers
+
+```{r}
+boxplot(df$t_service, main = "Nenhum Outlier Encontrado")
 ```
 
 
-# Projeto de Simulação
+```{r}
+boxplot(df$t_between, main = "Dois Outliers Encontrados")
+```
 
+### Correlação
+
+```{r}
+cor(df$t_service, df$t_between)
+```
+
+### Histogramas
+
+```{r}
+hist(df$t_service, main = "Tempo de Serviço")
+```
+
+```{r}
+hist(df$t_between, main = "Tempo Entre Serviços")
+```
+
+### Modelo
+
+```{r}
+model <- lm(t_service ~ t_between, df)
+
+plot(model)
+```
 
