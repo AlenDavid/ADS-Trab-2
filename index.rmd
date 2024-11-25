@@ -1,0 +1,9 @@
+```{r on_init, include=FALSE}
+ts <- read.delim('datasets/ts.txt')
+tc <- read.delim('datasets/tc.txt')
+```
+
+
+# Projeto de Simulação
+
+
