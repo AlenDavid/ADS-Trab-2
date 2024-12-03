@@ -24,6 +24,32 @@ Um exemplo dos dados disponibilizados pela empresa. A variável t_between presen
 head(df)
 ```
 
+### Estatísticas Descritivas
+
+
+```{r echo=TRUE, results='asis'}
+# Estatísticas descritivas para tempo de serviço (t_service)
+t_service_stats <- data.frame(
+  Métrica = c("Média", "Desvio padrão", "Valor mínimo", "Valor máximo"),
+  Valor = c(mean(df$t_service), sd(df$t_service), min(df$t_service), max(df$t_service))
+)
+
+# Estatísticas descritivas para tempo entre chegadas (t_between)
+t_between_stats <- data.frame(
+  Métrica = c("Média", "Desvio padrão", "Valor mínimo", "Valor máximo"),
+  Valor = c(mean(df$t_between), sd(df$t_between), min(df$t_between), max(df$t_between))
+)
+
+# Gerar tabelas em Markdown
+cat("### Tempo de Serviço (t_service) \n\n")
+knitr::kable(t_service_stats, format = "markdown", caption = "Estatísticas descritivas do tempo de serviço (t_service)")
+
+```
+```{r echo=TRUE, results='asis'}
+cat("\n### Tempo Entre Chegadas (t_between) \n\n")
+knitr::kable(t_between_stats, format = "markdown", caption = "Estatísticas descritivas do tempo entre chegadas (t_between)")
+```
+
 ### Outliers
 
 ```{r}
@@ -38,7 +64,15 @@ boxplot(df$t_between, main = "Dois Outliers Encontrados")
 ### Correlação
 
 ```{r}
-cor(df$t_service, df$t_between)
+cor(df$t_between, df$t_service)
+```
+```{r}
+plot(df$t_between, df$t_service,
+     main = "Relação entre Tempo de Chegada e Tempo de Serviço", 
+     xlab = "Tempo Entre Chegadas (t_between)",                  
+     ylab = "Tempo de Serviço (t_service)",                      
+     pch = 16)                                                   
+grid()
 ```
 
 ### Histogramas
@@ -58,4 +92,94 @@ model <- lm(t_service ~ t_between, df)
 
 plot(model)
 ```
+# Simulação
+```{r}
+source("simulator.R") 
+scenarios <- list(
+  list(servers = 1),
+  list(servers = 3),  
+  list(servers = 5)  
+)
+replications <- 10
 
+all_results <- list()
+
+for (scenario_id in seq_along(scenarios)) {
+  scenario <- scenarios[[scenario_id]]
+  scenario_data <- list()
+  
+  for (replication in 1:replications) {
+    sim_result <- simulate_queue(
+      mean_arrival = mean(df$t_between),    
+      sd_arrival = sd(df$t_between),
+      mean_service = mean(df$t_service),
+      sd_service = sd(df$t_service),
+      n_events = 250,                      
+      servers = scenario$servers           
+    )
+
+    scenario_data[[replication]] <- data.frame(
+      Cenário = scenario_id,
+      Replicação = replication,
+      Servidores = scenario$servers,
+      `U` = sim_result$metrics$utilization,
+      `Wq` = sim_result$metrics$avg_wait_time,
+      `Lq` = sim_result$metrics$avg_calls_on_queue
+    )
+  }
+  
+  all_results[[scenario_id]] <- do.call(rbind, scenario_data)
+}
+
+final_results <- do.call(rbind, all_results)
+example_events_df <- do.call(rbind, example_events)
+example_server_states_df <- do.call(rbind, example_server_states)
+library(knitr)
+kable(
+  final_results,
+  caption = "Resultados Detalhados das Replicações por Cenário",
+  digits = 3
+)
+```
+
+# Exibir exemplos de eventos simulados
+```{r}
+kable(
+  example_events_df,
+  caption = "Exemplos de Eventos Simulados por Cenário",
+  digits = 3
+)
+```
+
+```{r}
+aggregated_metrics <- aggregate(
+  cbind(`U`, `Wq`, `Lq`) ~ Cenário,
+  data = final_results,
+  mean
+)
+improvement <- data.frame(
+  Cenário = aggregated_metrics$Cenário,
+  `Taxa de Utilização (%)` = c(NA, diff(aggregated_metrics$`U`) / aggregated_metrics$`U`[-nrow(aggregated_metrics)] * 100),
+  `Tempo Médio de Espera (%)` = c(NA, -diff(aggregated_metrics$`Wq`) / aggregated_metrics$`Wq`[-nrow(aggregated_metrics)] * 100),
+  `Número Médio na Fila (%)` = c(NA, -diff(aggregated_metrics$`Lq`) / aggregated_metrics$`Lq`[-nrow(aggregated_metrics)] * 100)
+)
+
+print(improvement)
+```
+
+```{r}
+# Exibir a tabela agregada
+kable(
+  aggregated_metrics,
+  caption = "Médias das Métricas por Cenário",
+  digits = 3
+)
+```
+```{r}
+# Exibir a melhoria percentual
+kable(
+  improvement,
+  caption = "Melhorias Percentuais nas Métricas por Adição de Servidores",
+  digits = 2
+)
+```
