@@ -1,15 +1,6 @@
 simulate_queue <- function(mean_arrival, sd_arrival, mean_service, sd_service, n_events, servers) {
-  # Parameters:
-  # mean_arrival: Mean of inter-arrival times
-  # sd_arrival: Standard deviation of inter-arrival times
-  # mean_service: Mean of service times
-  # sd_service: Standard deviation of service times
-  # n_events: Number of events to simulate
-  # servers: Number of available servers
-  
-  # Generate inter-arrival and service times using a normal distribution
-  inter_arrival_times <- abs(rnorm(n_events, mean = mean_arrival, sd = sd_arrival))  
-  service_times <- abs(rnorm(n_events, mean = mean_service, sd = sd_service)) 
+  inter_arrival_times <- abs(round(rnorm(n_events, mean = mean_arrival, sd = sd_arrival)))  
+  service_times <- abs(round(rnorm(n_events, mean = mean_service, sd = sd_service))) 
   arrivals <- cumsum(inter_arrival_times)
   
   start_service <- numeric(n_events) 
@@ -17,30 +8,33 @@ simulate_queue <- function(mean_arrival, sd_arrival, mean_service, sd_service, n
   waiting_time <- numeric(n_events) 
   active_servers <- rep(0, servers)
   queue_lengths <- numeric(n_events)
-  server_states <- matrix(0, nrow = n_events, ncol = servers)  # Server states for each event
-  
-  # Simulation logic
+
   for (i in 1:n_events) {
     next_available_time <- min(active_servers)
     free_server <- which(active_servers == next_available_time)[1]  
     start_service[i] <- max(arrivals[i], next_available_time)
-    waiting_time[i] <- start_service[i] - arrivals[i]
+    waiting_time[i] <- max(0, start_service[i] - arrivals[i]) 
     finish_service[i] <- start_service[i] + service_times[i]
     active_servers[free_server] <- finish_service[i]
-    server_states[i, ] <- active_servers  # Log server states
     queue_lengths[i] <- sum(arrivals < start_service[i] & finish_service > arrivals)
   }
+
+  total_service_time <- sum(service_times) 
+  total_waiting_time <- sum(waiting_time) 
+  total_arrival_time <- max(arrivals) 
+  U <- total_service_time / (total_arrival_time * servers)
+  W_q <- total_waiting_time / n_events l
+  L_q <- total_waiting_time / total_service_time 
   
-  total_service_time <- sum(service_times)
-  total_time <- max(finish_service) - min(arrivals)
-  
-  # Metrics
-  lambda <- 1 / mean_arrival
-  mu <- 1 / mean_service
-  U <- lambda / (servers * mu)
-  P <- sum(waiting_time > 0) / n_events
-  W_q <- P / (servers * mu * (1 - U))
-  L_q <- lambda * W_q
+  #debugging
+  cat("\n### Métricas Calculadas ###\n")
+  cat(sprintf("Total Service Time: %.3f\n", total_service_time))
+  cat(sprintf("Total Waiting Time: %.3f\n", total_waiting_time))
+  cat(sprintf("Total Arrival Time: %.3f\n", total_arrival_time))
+  cat(sprintf("Taxa de Utilização (U): %.3f\n", U))
+  cat(sprintf("Tempo Médio de Espera (Wq): %.3f\n", W_q))
+  cat(sprintf("Número Médio na Fila (Lq): %.3f\n", L_q))
+  cat("\n")
   
   list(
     metrics = list(
@@ -56,7 +50,6 @@ simulate_queue <- function(mean_arrival, sd_arrival, mean_service, sd_service, n
       WaitingTime = waiting_time,
       ServiceTime = service_times,
       QueueLength = queue_lengths
-    ),
-    server_states = server_states
+    )
   )
 }
